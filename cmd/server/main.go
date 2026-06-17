@@ -6,6 +6,7 @@ import (
 	"os"
 
 	_ "github.com/JefersonGomez/studyflow-backend/docs"
+	"github.com/JefersonGomez/studyflow-backend/pkg/database"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
@@ -30,6 +31,8 @@ func main() {
 		log.Fatal("Error al cargar el .env")
 
 	}
+
+	database.Connect()
 
 	// Modo de gin segun entorno
 	if os.Getenv("ENV") == "production" {
@@ -56,8 +59,8 @@ func main() {
 		api.GET("/health", func(c *gin.Context) {
 
 			c.JSON(200, gin.H{
-				"status": "ok",
-				"massge": "Study API corriendo",
+				"status":  "ok",
+				"massage": "Study API corriendo",
 			})
 
 		})
@@ -65,7 +68,7 @@ func main() {
 
 	port := os.Getenv("PORT")
 
-	fmt.Printf("Servidor corriendo en hhtp://localhost:%s\n", port)
+	fmt.Printf("Servidor corriendo en http://localhost:%s\n", port)
 	fmt.Printf("Swagger en http://localhost:%s/swagger/index.html\n", port)
 
 	if err := r.Run(":" + port); err != nil {
