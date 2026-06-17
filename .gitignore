@@ -1,0 +1,5 @@
+.env
+storage/
+/docs/swagger.json
+/docs/swagger.yaml
+*.exe
