@@ -33,6 +33,7 @@ func main() {
 	}
 
 	database.Connect()
+	database.Migrate()
 
 	// Modo de gin segun entorno
 	if os.Getenv("ENV") == "production" {

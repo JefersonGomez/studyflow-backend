@@ -5,12 +5,19 @@ import (
 	"log"
 	"os"
 
-	"github.com/jmoiron/sqlx"
-	_ "github.com/lib/pq"
+	"github.com/JefersonGomez/studyflow-backend/internal/course"
+	"github.com/JefersonGomez/studyflow-backend/internal/event"
+	"github.com/JefersonGomez/studyflow-backend/internal/note"
+	"github.com/JefersonGomez/studyflow-backend/internal/studyfile"
+	"github.com/JefersonGomez/studyflow-backend/internal/task"
+	"github.com/JefersonGomez/studyflow-backend/internal/user"
+	"github.com/JefersonGomez/studyflow-backend/internal/whiteboard"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 )
 
 // controlador para la base de datos postgress
-var DB *sqlx.DB
+var DB *gorm.DB
 
 func Connect() {
 
@@ -23,19 +30,25 @@ func Connect() {
 		os.Getenv("DB_NAME"),
 	)
 
-	db, err := sqlx.Connect("postgres", dsn)
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 
 	if err != nil {
 
 		log.Fatal("Error al conectar a la base de datos", err)
 	}
-
-	//Limita el número máximo de conexiones abiertas simultáneamente a la base de datos.
-	db.SetMaxOpenConns(25)
-
-	//Limita el número máximo de conexiones inactivas (idle) que se mantienen en el pool.
-	db.SetMaxIdleConns(5)
-
 	DB = db
 	log.Println("Conectado a postgress")
+}
+
+func Migrate() {
+	DB.AutoMigrate(
+		&user.User{},
+		&course.Course{},
+		&event.Event{},
+		&task.Task{},
+		&note.Note{},
+		&whiteboard.Whiteboard{},
+		&studyfile.Studyfile{},
+	)
+
 }
