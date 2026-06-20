@@ -14,18 +14,13 @@ type GoogleUserInfo struct {
 }
 
 func HandlerGoogleUser(googleUser GoogleUserInfo) (*user.User, error) {
-
 	existeUser, err := FindByGoogleID(googleUser.ID)
-	if err != nil {
-		return nil, err
-	}
 
-	if existeUser != nil {
+	if err == nil {
 		return existeUser, nil
 	}
 
 	newUser := &user.User{
-
 		GoogleID:  googleUser.ID,
 		Email:     googleUser.Email,
 		Name:      googleUser.Name,

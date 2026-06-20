@@ -6,6 +6,7 @@ import (
 	"os"
 
 	_ "github.com/JefersonGomez/studyflow-backend/docs"
+	"github.com/JefersonGomez/studyflow-backend/internal/auth"
 	"github.com/JefersonGomez/studyflow-backend/pkg/database"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -65,6 +66,9 @@ func main() {
 			})
 
 		})
+
+		api.GET("/auth/google", auth.GoogleLogin)
+		api.GET("/auth/google/callback", auth.GoogleCallback)
 	}
 
 	port := os.Getenv("PORT")
