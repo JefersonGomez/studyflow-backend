@@ -46,11 +46,16 @@ Documentación completa: `http://localhost:8080/swagger/index.html`
 ## Progreso
 
 - [x] Setup inicial del proyecto
-- [ ] Conexión a PostgreSQL
-- [ ] Autenticación con Google OAuth
+- [x] Conexión a PostgreSQL
+- [x] Modelos y migraciones con GORM
+- [x] Autenticación con Google OAuth
+- [x] Generación y validación de JWT
+- [x] Middleware de rutas protegidas
 - [ ] Módulo de materias
 - [ ] Módulo de tareas
 - [ ] Módulo de notas
 - [ ] Módulo de calendario
 - [ ] Módulo de pizarra
 - [ ] Integración con Ollama
+
+

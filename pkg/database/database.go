@@ -5,13 +5,6 @@ import (
 	"log"
 	"os"
 
-	"github.com/JefersonGomez/studyflow-backend/internal/course"
-	"github.com/JefersonGomez/studyflow-backend/internal/event"
-	"github.com/JefersonGomez/studyflow-backend/internal/note"
-	"github.com/JefersonGomez/studyflow-backend/internal/studyfile"
-	"github.com/JefersonGomez/studyflow-backend/internal/task"
-	"github.com/JefersonGomez/studyflow-backend/internal/user"
-	"github.com/JefersonGomez/studyflow-backend/internal/whiteboard"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -38,17 +31,4 @@ func Connect() {
 	}
 	DB = db
 	log.Println("Conectado a postgress")
-}
-
-func Migrate() {
-	DB.AutoMigrate(
-		&user.User{},
-		&course.Course{},
-		&event.Event{},
-		&task.Task{},
-		&note.Note{},
-		&whiteboard.Whiteboard{},
-		&studyfile.Studyfile{},
-	)
-
 }

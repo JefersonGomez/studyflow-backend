@@ -5,9 +5,16 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/user"
 
 	_ "github.com/JefersonGomez/studyflow-backend/docs"
 	"github.com/JefersonGomez/studyflow-backend/internal/auth"
+	"github.com/JefersonGomez/studyflow-backend/internal/course"
+	"github.com/JefersonGomez/studyflow-backend/internal/event"
+	"github.com/JefersonGomez/studyflow-backend/internal/note"
+	"github.com/JefersonGomez/studyflow-backend/internal/studyfile"
+	"github.com/JefersonGomez/studyflow-backend/internal/task"
+	"github.com/JefersonGomez/studyflow-backend/internal/whiteboard"
 	"github.com/JefersonGomez/studyflow-backend/pkg/database"
 	"github.com/JefersonGomez/studyflow-backend/pkg/middleware"
 	"github.com/gin-contrib/cors"
@@ -36,7 +43,16 @@ func main() {
 	}
 
 	database.Connect()
-	database.Migrate()
+
+	database.DB.AutoMigrate(
+		&user.User{},
+		&course.Course{},
+		&event.Event{},
+		&task.Task{},
+		&note.Note{},
+		&whiteboard.Whiteboard{},
+		&studyfile.Studyfile{},
+	)
 
 	// Modo de gin segun entorno
 	if os.Getenv("ENV") == "production" {
@@ -78,6 +94,14 @@ func main() {
 			c.JSON(http.StatusOK, gin.H{"userID": userID})
 		})
 
+	}
+	courses := api.Group("/courses")
+	courses.Use(middleware.AuthRequired())
+	{
+		courses.POST("", course.CreateCourseHandler)
+		courses.GET("", course.GetCoursesHandler)
+		courses.PUT("/:id", course.UpdateCourseHandler)
+		courses.DELETE("/:id", course.DeleteCourseHandler)
 	}
 
 	port := os.Getenv("PORT")
