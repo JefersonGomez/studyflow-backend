@@ -3,11 +3,13 @@ package main
 import (
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 
 	_ "github.com/JefersonGomez/studyflow-backend/docs"
 	"github.com/JefersonGomez/studyflow-backend/internal/auth"
 	"github.com/JefersonGomez/studyflow-backend/pkg/database"
+	"github.com/JefersonGomez/studyflow-backend/pkg/middleware"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
@@ -69,6 +71,13 @@ func main() {
 
 		api.GET("/auth/google", auth.GoogleLogin)
 		api.GET("/auth/google/callback", auth.GoogleCallback)
+
+		// ejemplo de ruta protegida por un middleware
+		api.GET("/me", middleware.AuthRequired(), func(c *gin.Context) {
+			userID, _ := c.Get("userID")
+			c.JSON(http.StatusOK, gin.H{"userID": userID})
+		})
+
 	}
 
 	port := os.Getenv("PORT")
