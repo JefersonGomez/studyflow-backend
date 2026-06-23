@@ -104,6 +104,8 @@ func main() {
 		courses.DELETE("/:id", course.DeleteCourseHandler)
 		courses.POST("/:id/tasks", task.CreateTaskHandler)
 		courses.GET("/:id/tasks", task.GetTaskHandler)
+		courses.POST("/:id/notes", note.CreateNoteHandler)
+		courses.GET("/:id/notes", note.GetNotesHandler)
 	}
 
 	tasks := api.Group("/task")
@@ -113,6 +115,13 @@ func main() {
 
 		tasks.PUT("/:id", task.UpdateTaskHandler)
 		tasks.DELETE("/:id", task.DeleteTaskHandler)
+	}
+
+	notes := api.Group("/notes")
+	notes.Use(middleware.AuthRequired())
+	{
+		notes.PUT("/:id", note.UpdateNoteHandler)
+		notes.DELETE("/:id", note.DeleteNoteHandler)
 	}
 
 	port := os.Getenv("PORT")
