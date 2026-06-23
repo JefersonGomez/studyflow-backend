@@ -102,6 +102,17 @@ func main() {
 		courses.GET("", course.GetCoursesHandler)
 		courses.PUT("/:id", course.UpdateCourseHandler)
 		courses.DELETE("/:id", course.DeleteCourseHandler)
+		courses.POST("/:id/tasks", task.CreateTaskHandler)
+		courses.GET("/:id/tasks", task.GetTaskHandler)
+	}
+
+	tasks := api.Group("/task")
+
+	tasks.Use(middleware.AuthRequired())
+	{
+
+		tasks.PUT("/:id", task.UpdateTaskHandler)
+		tasks.DELETE("/:id", task.DeleteTaskHandler)
 	}
 
 	port := os.Getenv("PORT")
