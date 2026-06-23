@@ -11,7 +11,7 @@ type Whiteboard struct {
 	UserID    string         `json:"userID" gorm:"not null"`
 	CourseID  *string        `json:"courseID"`
 	Title     string         `json:"title"`
-	Elemets   datatypes.JSON `json:"elemts"`
+	Elements  datatypes.JSON `json:"elemts"`
 	CreatedAt time.Time      `json:"createAt" gorm:"autoCreateTime" `
 	UptadeAt  time.Time      `json:"updateAt" gorm:"autoCreateTime"`
 }

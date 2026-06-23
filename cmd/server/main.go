@@ -95,6 +95,14 @@ func main() {
 		})
 
 	}
+
+	whiteboards := api.Group("/whiteboards")
+	whiteboards.Use(middleware.AuthRequired())
+	{
+		whiteboards.POST("", whiteboard.CreateWhiteboardHandler)
+		whiteboards.PUT("/:id", whiteboard.UpdateWhiteboardHandler)
+		whiteboards.DELETE("/:id", whiteboard.DeleteWhiteboardHandler)
+	}
 	courses := api.Group("/courses")
 	courses.Use(middleware.AuthRequired())
 	{
@@ -106,6 +114,7 @@ func main() {
 		courses.GET("/:id/tasks", task.GetTaskHandler)
 		courses.POST("/:id/notes", note.CreateNoteHandler)
 		courses.GET("/:id/notes", note.GetNotesHandler)
+		courses.GET("/:id/whiteboards", whiteboard.GetCourseWhiteboardsHandler)
 	}
 
 	tasks := api.Group("/task")
