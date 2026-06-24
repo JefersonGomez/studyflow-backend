@@ -7,6 +7,7 @@ import (
 	"os"
 
 	_ "github.com/JefersonGomez/studyflow-backend/docs"
+	"github.com/JefersonGomez/studyflow-backend/internal/ai"
 	"github.com/JefersonGomez/studyflow-backend/internal/auth"
 	"github.com/JefersonGomez/studyflow-backend/internal/course"
 	"github.com/JefersonGomez/studyflow-backend/internal/event"
@@ -139,6 +140,15 @@ func main() {
 	files.Use(middleware.AuthRequired())
 	{
 		files.DELETE("/:id", studyfile.DeleteStudyFileHandler)
+	}
+
+	aiRoutes := api.Group("/ai")
+	aiRoutes.Use(middleware.AuthRequired())
+	{
+		aiRoutes.GET("/summarize/:id", ai.SummarizeNoteHandler)
+		aiRoutes.GET("/questions/:id", ai.GenerateQuestionsHandler)
+		aiRoutes.GET("/studyplan/:id", ai.GenerateStudyPlanHandler)
+		aiRoutes.GET("/analyze/:id", ai.AnalyzePDFHandler)
 	}
 
 	port := os.Getenv("PORT")
