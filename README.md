@@ -46,16 +46,15 @@ Documentación completa: `http://localhost:8080/swagger/index.html`
 ## Progreso
 
 - [x] Setup inicial del proyecto
-- [x] Conexión a PostgreSQL
-- [x] Modelos y migraciones con GORM
+- [x] Conexión a PostgreSQL con GORM
+- [x] Modelos y migraciones automáticas
 - [x] Autenticación con Google OAuth
 - [x] Generación y validación de JWT
 - [x] Middleware de rutas protegidas
-- [ ] Módulo de materias
-- [ ] Módulo de tareas
-- [ ] Módulo de notas
-- [ ] Módulo de calendario
-- [ ] Módulo de pizarra
-- [ ] Integración con Ollama
-
-
+- [x] CRUD de materias (courses)
+- [x] CRUD de tareas (tasks)
+- [x] CRUD de notas (notes)
+- [x] CRUD de eventos (events)
+- [x] CRUD de pizarra (whiteboard)
+- [x] Subida y extracción de texto de PDFs
+- [x] Integración con Ollama IA local
