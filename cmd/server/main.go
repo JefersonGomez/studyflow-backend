@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	_ "github.com/JefersonGomez/studyflow-backend/docs"
 	"github.com/JefersonGomez/studyflow-backend/internal/ai"
@@ -79,7 +80,15 @@ func main() {
 
 		api.GET("/me", middleware.AuthRequired(), func(c *gin.Context) {
 			userID, _ := c.Get("userID")
-			c.JSON(http.StatusOK, gin.H{"userID": userID})
+
+			var u user.User
+			result := database.DB.Where("id = ?", userID).First(&u)
+			if result.Error != nil {
+				c.JSON(http.StatusNotFound, gin.H{"error": "usuario no encontrado"})
+				return
+			}
+
+			c.JSON(http.StatusOK, u)
 		})
 	}
 
@@ -151,6 +160,38 @@ func main() {
 		aiRoutes.GET("/analyze/:id", ai.AnalyzePDFHandler)
 	}
 
+	api.GET("/stats", middleware.AuthRequired(), func(c *gin.Context) {
+		userID, _ := c.Get("userID")
+
+		var courseCount int64
+		var taskCount int64
+		var noteCount int64
+		var pendingCount int64
+
+		database.DB.Model(&course.Course{}).Where("user_id = ?", userID).Count(&courseCount)
+		database.DB.Model(&task.Task{}).Where("user_id = ?", userID).Count(&taskCount)
+		database.DB.Model(&note.Note{}).Where("user_id = ?", userID).Count(&noteCount)
+		database.DB.Model(&task.Task{}).Where("user_id = ? AND status = ?", userID, "pendiente").Count(&pendingCount)
+
+		c.JSON(http.StatusOK, gin.H{
+			"courses": courseCount,
+			"tasks":   taskCount,
+			"notes":   noteCount,
+			"pending": pendingCount,
+		})
+	})
+
+	api.GET("/upcoming-tasks", middleware.AuthRequired(), func(c *gin.Context) {
+		userID, _ := c.Get("userID")
+
+		var tasks []task.Task
+		database.DB.Where("user_id = ? AND status != ? AND due_date >= ?", userID, "completada", time.Now()).
+			Order("due_date ASC").
+			Limit(5).
+			Find(&tasks)
+
+		c.JSON(http.StatusOK, tasks)
+	})
 	port := os.Getenv("PORT")
 	fmt.Printf("Servidor corriendo en http://localhost:%s\n", port)
 	fmt.Printf("Swagger en http://localhost:%s/swagger/index.html\n", port)

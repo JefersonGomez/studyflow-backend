@@ -13,6 +13,7 @@ type CreateEventRequest struct {
 	Type        string     `json:"type" binding:"required"`
 	StartDate   time.Time  `json:"startDate" binding:"required"`
 	EndDate     *time.Time `json:"endDate"`
+	CourseID    *string    `json:"courseID"` // ← Agrega este campo
 }
 
 // CreateEventHandler crea un nuevo evento
@@ -35,7 +36,12 @@ func CreateEventHandler(c *gin.Context) {
 	}
 
 	userID, _ := c.Get("userID")
-	courseID := c.Query("courseID")
+
+	// ← CAMBIO AQUÍ: Obtener courseID del body, no de query params
+	courseID := ""
+	if req.CourseID != nil {
+		courseID = *req.CourseID
+	}
 
 	event, err := CreateEventService(userID.(string), courseID, req.Title, req.Description, req.Type, req.StartDate, req.EndDate)
 	if err != nil {
