@@ -3,46 +3,71 @@ package ai
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
+	"io"
+	"log"
 	"net/http"
+	"os"
 )
 
-type OllamaRequest struct {
-	Model  string `json:"model"`
-	Prompt string `json:"prompt"`
-	Stream bool   `json:"stream"`
+type GroqMessage struct {
+	Role    string `json:"role"`
+	Content string `json:"content"`
 }
 
-type OllamaResponse struct {
-	Response string `json:"response"`
+type GroqRequest struct {
+	Model    string        `json:"model"`
+	Messages []GroqMessage `json:"messages"`
+}
+
+type GroqChoice struct {
+	Message GroqMessage `json:"message"`
+}
+
+type GroqResponse struct {
+	Choices []GroqChoice `json:"choices"`
 }
 
 func Generate(prompt string) (string, error) {
-
-	newResques := &OllamaRequest{
-		Prompt: prompt,
-		Model:  "qwen2.5:7b",
-		Stream: false,
+	reqBody := GroqRequest{
+		Model: "llama-3.3-70b-versatile",
+		Messages: []GroqMessage{
+			{Role: "user", Content: prompt},
+		},
 	}
 
-	body, err := json.Marshal(newResques)
-
+	body, err := json.Marshal(reqBody)
 	if err != nil {
 		return "", err
 	}
 
-	resp, err := http.Post("http://localhost:11434/api/generate", "application/json", bytes.NewBuffer(body))
+	req, err := http.NewRequest("POST", "https://api.groq.com/openai/v1/chat/completions", bytes.NewBuffer(body))
+	if err != nil {
+		return "", err
+	}
 
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("GROQ_API_KEY"))
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
 	if err != nil {
 		return "", err
 	}
 	defer resp.Body.Close()
 
-	var ollamaResp OllamaResponse
+	// Log temporal para ver el error
+	bodyBytes, _ := io.ReadAll(resp.Body)
+	log.Printf("Groq status: %d, body: %s", resp.StatusCode, string(bodyBytes))
 
-	if err := json.NewDecoder(resp.Body).Decode(&ollamaResp); err != nil {
+	var groqResp GroqResponse
+	if err := json.Unmarshal(bodyBytes, &groqResp); err != nil {
 		return "", err
 	}
 
-	return ollamaResp.Response, nil
+	if len(groqResp.Choices) == 0 {
+		return "", fmt.Errorf("no se recibió respuesta de Groq")
+	}
 
+	return groqResp.Choices[0].Message.Content, nil
 }

@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/JefersonGomez/studyflow-backend/internal/course"
+	"github.com/JefersonGomez/studyflow-backend/pkg/database" // Asegúrate de importar tu paquete de DB
 	"github.com/gin-gonic/gin"
 )
 
@@ -13,21 +15,22 @@ type CreateEventRequest struct {
 	Type        string     `json:"type" binding:"required"`
 	StartDate   time.Time  `json:"startDate" binding:"required"`
 	EndDate     *time.Time `json:"endDate"`
-	CourseID    *string    `json:"courseID"` // ← Agrega este campo
+	CourseID    *string    `json:"courseID"`
+}
+
+// EventResponse es SOLO para respuestas GET, no modifica el modelo original
+type EventResponse struct {
+	ID          string     `json:"id"`
+	Title       string     `json:"title"`
+	Type        string     `json:"type"`
+	StartDate   time.Time  `json:"startDate"`
+	EndDate     *time.Time `json:"endDate"`
+	Description string     `json:"description"`
+	CourseID    *string    `json:"courseId"`
+	CourseName  string     `json:"courseName"`
 }
 
 // CreateEventHandler crea un nuevo evento
-// @Summary      Crear evento
-// @Description  Crea un nuevo evento para el usuario autenticado
-// @Tags         events
-// @Accept       json
-// @Produce      json
-// @Security     BearerAuth
-// @Param        event body CreateEventRequest true "Datos del evento"
-// @Success      201 {object} Event
-// @Failure      400 {object} map[string]string
-// @Failure      500 {object} map[string]string
-// @Router       /events [post]
 func CreateEventHandler(c *gin.Context) {
 	var req CreateEventRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -37,7 +40,6 @@ func CreateEventHandler(c *gin.Context) {
 
 	userID, _ := c.Get("userID")
 
-	// ← CAMBIO AQUÍ: Obtener courseID del body, no de query params
 	courseID := ""
 	if req.CourseID != nil {
 		courseID = *req.CourseID
@@ -52,15 +54,7 @@ func CreateEventHandler(c *gin.Context) {
 	c.JSON(http.StatusCreated, event)
 }
 
-// GetUserEventsHandler obtiene todos los eventos del usuario
-// @Summary      Obtener eventos del usuario
-// @Description  Obtiene todos los eventos del usuario autenticado
-// @Tags         events
-// @Produce      json
-// @Security     BearerAuth
-// @Success      200 {object} []Event
-// @Failure      500 {object} map[string]string
-// @Router       /events [get]
+// GetUserEventsHandler obtiene todos los eventos del usuario con nombre de curso
 func GetUserEventsHandler(c *gin.Context) {
 	userID, _ := c.Get("userID")
 
@@ -70,19 +64,57 @@ func GetUserEventsHandler(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, events)
+	// 1. Recolectar IDs únicos de cursos
+	courseIDs := make(map[string]bool)
+	for _, e := range events {
+		if e.CourseID != nil && *e.CourseID != "" {
+			courseIDs[*e.CourseID] = true
+		}
+	}
+
+	// 2. Cargar nombres usando .Table("courses") para evitar pluralización
+	coursesMap := make(map[string]string)
+	if len(courseIDs) > 0 {
+		ids := make([]string, 0, len(courseIDs))
+		for id := range courseIDs {
+			ids = append(ids, id)
+		}
+
+		// ✅ Usamos el modelo Course real y forzamos la tabla correcta
+		var courses []course.Course
+		database.DB.Table("courses").Select("id, name").Where("id IN ?", ids).Find(&courses)
+
+		for _, cr := range courses {
+			coursesMap[cr.ID] = cr.Name
+		}
+	}
+
+	// 3. Mapear a EventResponse
+	response := make([]EventResponse, len(events))
+	for i, e := range events {
+		courseName := "Sin Materia"
+		if e.CourseID != nil && *e.CourseID != "" {
+			if name, ok := coursesMap[*e.CourseID]; ok {
+				courseName = name
+			}
+		}
+
+		response[i] = EventResponse{
+			ID:          e.ID,
+			Title:       e.Title,
+			Type:        e.Type,
+			StartDate:   e.StartDate,
+			EndDate:     e.EndDate,
+			Description: e.Description,
+			CourseID:    e.CourseID,
+			CourseName:  courseName,
+		}
+	}
+
+	c.JSON(http.StatusOK, response)
 }
 
-// GetCourseEventsHandler obtiene los eventos de un curso
-// @Summary      Obtener eventos de un curso
-// @Description  Obtiene todos los eventos de un curso específico
-// @Tags         events
-// @Produce      json
-// @Security     BearerAuth
-// @Param        id path string true "ID del curso"
-// @Success      200 {object} []Event
-// @Failure      500 {object} map[string]string
-// @Router       /courses/{id}/events [get]
+// GetCourseEventsHandler obtiene los eventos de un curso específico
 func GetCourseEventsHandler(c *gin.Context) {
 	courseID := c.Param("id")
 
@@ -96,18 +128,6 @@ func GetCourseEventsHandler(c *gin.Context) {
 }
 
 // UpdateEventHandler actualiza un evento
-// @Summary      Actualizar evento
-// @Description  Actualiza los datos de un evento del usuario autenticado
-// @Tags         events
-// @Accept       json
-// @Produce      json
-// @Security     BearerAuth
-// @Param        id path string true "ID del evento"
-// @Param        event body CreateEventRequest true "Datos actualizados del evento"
-// @Success      200 {object} Event
-// @Failure      400 {object} map[string]string
-// @Failure      500 {object} map[string]string
-// @Router       /events/{id} [put]
 func UpdateEventHandler(c *gin.Context) {
 	eventID := c.Param("id")
 	userID, _ := c.Get("userID")
@@ -128,15 +148,6 @@ func UpdateEventHandler(c *gin.Context) {
 }
 
 // DeleteEventHandler elimina un evento
-// @Summary      Eliminar evento
-// @Description  Elimina un evento del usuario autenticado
-// @Tags         events
-// @Produce      json
-// @Security     BearerAuth
-// @Param        id path string true "ID del evento"
-// @Success      200 {object} map[string]string
-// @Failure      500 {object} map[string]string
-// @Router       /events/{id} [delete]
 func DeleteEventHandler(c *gin.Context) {
 	eventID := c.Param("id")
 	userID, _ := c.Get("userID")
