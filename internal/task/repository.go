@@ -1,6 +1,8 @@
 package task
 
-import "github.com/JefersonGomez/studyflow-backend/pkg/database"
+import (
+	"github.com/JefersonGomez/studyflow-backend/pkg/database"
+)
 
 /* type Task struct {
 	ID          string    `json:"id" gorm:"primaryKey;default:gen_random_uuid()"`
@@ -40,6 +42,17 @@ func GetTaskByCourseID(courseID string) ([]Task, error) {
 
 }
 
+func GetAllTasks(userID string) ([]Task, error) {
+
+	var tasks []Task
+
+	result := database.DB.Where("user_id = ? ", userID).Find(&tasks)
+
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return tasks, nil
+}
 func GetTaskByID(taskID string) (*Task, error) {
 
 	var task Task

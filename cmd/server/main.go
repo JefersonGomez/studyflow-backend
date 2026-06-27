@@ -117,13 +117,16 @@ func main() {
 	tasks := api.Group("/tasks")
 	tasks.Use(middleware.AuthRequired())
 	{
+		tasks.GET("", task.GetAllTaskHandler)
 		tasks.PUT("/:id", task.UpdateTaskHandler)
 		tasks.DELETE("/:id", task.DeleteTaskHandler)
+
 	}
 
 	notes := api.Group("/notes")
 	notes.Use(middleware.AuthRequired())
 	{
+		notes.GET("", note.GetAllNotesHandler)
 		notes.PUT("/:id", note.UpdateNoteHandler)
 		notes.DELETE("/:id", note.DeleteNoteHandler)
 	}

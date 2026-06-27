@@ -9,5 +9,5 @@ type Note struct {
 	Title     string    `json:"title"`
 	Content   string    `json:"content"`
 	CreatedAt time.Time `json:"createAt" gorm:"autoCreateTime" `
-	UptadeAt  time.Time `json:"updateAt" gorm:"autoUpdateTime"`
+	UpdatedAt time.Time `json:"updateAt" gorm:"autoUpdateTime;column:updated_at"`
 }

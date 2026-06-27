@@ -25,6 +25,18 @@ func CreateTaskService(userID, courseID, title, description, status string, dueD
 
 }
 
+func GetTasksByUserService(userID string) ([]Task, error) {
+
+	task, err := GetAllTasks(userID)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return task, nil
+
+}
+
 func GetCourseTask(courseID string) ([]Task, error) {
 
 	tasks, err := GetTaskByCourseID(courseID)

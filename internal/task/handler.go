@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/JefersonGomez/studyflow-backend/internal/course"
+	"github.com/JefersonGomez/studyflow-backend/pkg/database"
 	"github.com/gin-gonic/gin"
 )
 
@@ -12,6 +14,16 @@ type CreateTaskRequest struct {
 	Description string    `json:"description"`
 	Status      string    `json:"status"`
 	DueDate     time.Time `json:"dueDate" binding:"required"`
+}
+
+type TaskResponse struct {
+	ID          string    `json:"id"`
+	Title       string    `json:"title"`
+	Description string    `json:"description"`
+	Status      string    `json:"status"`
+	DueDate     time.Time `json:"dueDate"`
+	CourseID    *string   `json:"courseId"`
+	CourseName  string    `json:"courseName"` // ← Nuevo campo
 }
 
 // CreateTaskHandler crea una nueva tarea en un curso
@@ -122,4 +134,60 @@ func DeleteTaskHandler(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "tarea eliminada"})
+}
+
+func GetAllTaskHandler(c *gin.Context) {
+	userID, _ := c.Get("userID")
+
+	var tasks []Task // Tu modelo original
+	database.DB.Where("user_id = ?", userID).Find(&tasks)
+
+	// 1. Recolectar IDs únicos de cursos
+	courseIDs := make(map[string]bool)
+	for _, t := range tasks {
+		if t.CourseID != nil && *t.CourseID != "" {
+			courseIDs[*t.CourseID] = true
+		}
+	}
+
+	// 2. Cargar nombres en UNA sola consulta
+	coursesMap := make(map[string]string)
+	if len(courseIDs) > 0 {
+		ids := make([]string, 0, len(courseIDs))
+		for id := range courseIDs {
+			ids = append(ids, id)
+		}
+
+		var courses []course.Course
+		// Usamos .Table("courses") si tienes problemas de pluralización,
+		// o simplemente database.DB.Find(&courses, ids) si GORM lo maneja bien
+		database.DB.Select("id, name").Where("id IN ?", ids).Find(&courses)
+
+		for _, cr := range courses {
+			coursesMap[cr.ID] = cr.Name
+		}
+	}
+
+	// 3. Mapear a respuesta
+	response := make([]TaskResponse, len(tasks))
+	for i, t := range tasks {
+		courseName := "Sin Materia"
+		if t.CourseID != nil && *t.CourseID != "" {
+			if name, ok := coursesMap[*t.CourseID]; ok {
+				courseName = name
+			}
+		}
+
+		response[i] = TaskResponse{
+			ID:          t.ID,
+			Title:       t.Title,
+			Description: t.Description,
+			Status:      t.Status,
+			DueDate:     t.DueDate,
+			CourseID:    t.CourseID,
+			CourseName:  courseName,
+		}
+	}
+
+	c.JSON(http.StatusOK, response)
 }

@@ -1,14 +1,25 @@
 package note
 
 import (
+	"fmt"
 	"net/http"
 
+	"github.com/JefersonGomez/studyflow-backend/internal/course"
+	"github.com/JefersonGomez/studyflow-backend/pkg/database"
 	"github.com/gin-gonic/gin"
 )
 
 type CreateNoteRequest struct {
 	Title   string `json:"title" binding:"required"`
 	Content string `json:"content"`
+}
+
+type NoteResponse struct {
+	ID         string  `json:"id"`
+	Title      string  `json:"title" binding:"required"`
+	Content    string  `json:"content"`
+	CourseID   *string `json:"courseId"`
+	CourseName string  `json:"courseName"` // ← Nuevo campo
 }
 
 // CreateNoteHandler crea una nueva nota en un curso
@@ -118,4 +129,71 @@ func DeleteNoteHandler(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "nota eliminada"})
+}
+
+func GetAllNotesHandler(c *gin.Context) {
+	userID, _ := c.Get("userID")
+
+	var notes []Note
+	result := database.DB.Debug().Where("user_id = ?", userID.(string)).Find(&notes)
+
+	fmt.Println("Error:", result.Error)
+	fmt.Println("Rows:", result.RowsAffected)
+	fmt.Println("Notes:", notes)
+	if result.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": result.Error.Error()})
+		return
+	}
+	if result.RowsAffected == 0 {
+		c.JSON(http.StatusOK, []NoteResponse{})
+		return
+	}
+
+	// Opcional: Enriquecer con courseName igual que hicimos en tasks/events
+	// Por ahora devolvemos las notas puras
+	courseIDs := make(map[string]bool)
+	for _, t := range notes {
+		if t.CourseID != nil && *t.CourseID != "" {
+			courseIDs[*t.CourseID] = true
+		}
+	}
+
+	// 2. Cargar nombres en UNA sola consulta
+	coursesMap := make(map[string]string)
+	if len(courseIDs) > 0 {
+		ids := make([]string, 0, len(courseIDs))
+		for id := range courseIDs {
+			ids = append(ids, id)
+		}
+
+		var courses []course.Course
+		// Usamos .Table("courses") si tienes problemas de pluralización,
+		// o simplemente database.DB.Find(&courses, ids) si GORM lo maneja bien
+		database.DB.Select("id, name").Where("id IN ?", ids).Find(&courses)
+
+		for _, cr := range courses {
+			coursesMap[cr.ID] = cr.Name
+		}
+	}
+
+	// 3. Mapear a respuesta
+	response := make([]NoteResponse, len(notes))
+	for i, t := range notes {
+		courseName := "Sin Materia"
+		if t.CourseID != nil && *t.CourseID != "" {
+			if name, ok := coursesMap[*t.CourseID]; ok {
+				courseName = name
+			}
+		}
+
+		response[i] = NoteResponse{
+			ID:         t.ID,
+			Title:      t.Title,
+			Content:    t.Content,
+			CourseID:   t.CourseID,
+			CourseName: courseName,
+		}
+	}
+
+	c.JSON(http.StatusOK, response)
 }
