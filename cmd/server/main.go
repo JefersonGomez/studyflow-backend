@@ -36,9 +36,6 @@ import (
 // @in header
 // @name Authorization
 func main() {
-	if err := godotenv.Load(); err != nil {
-		log.Fatal("Error al cargar el .env")
-	}
 
 	if os.Getenv("ENV") != "production" {
 		if err := godotenv.Load(); err != nil {
