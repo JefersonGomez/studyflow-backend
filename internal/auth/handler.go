@@ -75,5 +75,6 @@ func GoogleCallback(c *gin.Context) {
 
 	}
 
-	c.Redirect(http.StatusTemporaryRedirect, "http://localhost:5173/auth/callback?token="+jwtToken)
+	frontendURL := os.Getenv("FRONTEND_URL")
+	c.Redirect(http.StatusTemporaryRedirect, frontendURL+"/auth/callback?token="+jwtToken)
 }
