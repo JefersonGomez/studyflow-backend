@@ -14,6 +14,7 @@ import (
 	"github.com/JefersonGomez/studyflow-backend/internal/event"
 	"github.com/JefersonGomez/studyflow-backend/internal/note"
 	"github.com/JefersonGomez/studyflow-backend/internal/studyfile"
+	"github.com/JefersonGomez/studyflow-backend/internal/studyplan"
 	"github.com/JefersonGomez/studyflow-backend/internal/task"
 	"github.com/JefersonGomez/studyflow-backend/internal/user"
 	"github.com/JefersonGomez/studyflow-backend/internal/whiteboard"
@@ -49,16 +50,22 @@ func main() {
 		&note.Note{},
 		&whiteboard.Whiteboard{},
 		&studyfile.Studyfile{},
+		&studyplan.StudyPlan{},
 	)
 
-	if os.Getenv("ENV") == "production" {
-		gin.SetMode(gin.ReleaseMode)
+	if os.Getenv("ENV") != "production" {
+		if err := godotenv.Load(); err != nil {
+			log.Println("No se encontró .env, usando variables del sistema")
+		}
 	}
 
 	r := gin.Default()
 
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:5173"},
+		AllowOrigins: []string{
+			"http://localhost:5173",
+			os.Getenv("FRONTEND_URL"), // ← tu dominio de Vercel
+		},
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
 		AllowCredentials: true,
@@ -144,10 +151,10 @@ func main() {
 	{
 		events.POST("", event.CreateEventHandler)
 		events.GET("", event.GetUserEventsHandler)
+		events.GET("/course/:id", event.GetCourseEventsHandler) // ← agregar
 		events.PUT("/:id", event.UpdateEventHandler)
 		events.DELETE("/:id", event.DeleteEventHandler)
 	}
-
 	files := api.Group("/files")
 	files.Use(middleware.AuthRequired())
 	{
@@ -161,6 +168,8 @@ func main() {
 		aiRoutes.GET("/questions/:id", ai.GenerateQuestionsHandler)
 		aiRoutes.GET("/studyplan/:id", ai.GenerateStudyPlanHandler)
 		aiRoutes.GET("/analyze/:id", ai.AnalyzePDFHandler)
+		aiRoutes.GET("/studyplan/course/:id", ai.GenerateStudyPlanByCourseHandler)
+		aiRoutes.GET("/studyplan/course/:id/saved", ai.GetStudyPlanHandler)
 	}
 
 	api.GET("/stats", middleware.AuthRequired(), func(c *gin.Context) {

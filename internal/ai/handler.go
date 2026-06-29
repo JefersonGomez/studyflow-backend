@@ -11,12 +11,24 @@ import (
 	"github.com/JefersonGomez/studyflow-backend/internal/event"
 	"github.com/JefersonGomez/studyflow-backend/internal/note"
 	"github.com/JefersonGomez/studyflow-backend/internal/studyfile"
+	"github.com/JefersonGomez/studyflow-backend/internal/studyplan"
 	"github.com/JefersonGomez/studyflow-backend/pkg/database"
 	"github.com/gin-gonic/gin"
 )
 
-//funciones http
-
+// funciones http
+// SummarizeNoteHandler godoc
+//
+//	@Summary		Resumir nota con IA
+//	@Description	Genera un resumen automático del contenido de una nota utilizando IA
+//	@Tags			AI
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id	path		string	true	"ID de la nota"
+//	@Success		200	{object}	map[string]string
+//	@Failure		404	{object}	map[string]string
+//	@Failure		500	{object}	map[string]string
+//	@Router			/ai/notes/{id}/summary [get]
 func SummarizeNoteHandler(c *gin.Context) {
 	noteID := c.Param("id")
 
@@ -35,6 +47,20 @@ func SummarizeNoteHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"summary": summary})
 }
 
+// GenerateStudyPlanHandler godoc
+//
+//	@Summary		Generar plan de estudio desde archivo
+//	@Description	Genera un plan de estudio basado en el contenido de un PDF o material de estudio
+//	@Tags			AI
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id		path		string	true	"ID del archivo"
+//	@Param			days	query		int		true	"Cantidad de días"
+//	@Success		200		{object}	map[string]interface{}
+//	@Failure		400		{object}	map[string]string
+//	@Failure		404		{object}	map[string]string
+//	@Failure		500		{object}	map[string]string
+//	@Router			/ai/files/{id}/study-plan [get]
 func GenerateStudyPlanHandler(c *gin.Context) {
 	fileID := c.Param("id")
 
@@ -60,6 +86,18 @@ func GenerateStudyPlanHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"studyPlan": studyPlan})
 }
 
+// GenerateQuestionsHandler godoc
+//
+//	@Summary		Generar preguntas de estudio
+//	@Description	Genera preguntas de práctica a partir de una nota usando IA
+//	@Tags			AI
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id	path		string	true	"ID de la nota"
+//	@Success		200	{object}	map[string]interface{}
+//	@Failure		404	{object}	map[string]string
+//	@Failure		500	{object}	map[string]string
+//	@Router			/ai/notes/{id}/questions [get]
 func GenerateQuestionsHandler(c *gin.Context) {
 	noteID := c.Param("id")
 
@@ -69,9 +107,16 @@ func GenerateQuestionsHandler(c *gin.Context) {
 		return
 	}
 
-	questions, err := GenerateQuestions(n.Content)
+	raw, err := GenerateQuestions(n.Content)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Parsear el string JSON que devuelve la IA
+	var questions []map[string]string
+	if err := json.Unmarshal([]byte(raw), &questions); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "respuesta de IA no válida"})
 		return
 	}
 
@@ -92,6 +137,19 @@ func mapEventType(tipo string) string {
 		return "clase"
 	}
 }
+
+// AnalyzePDFHandler godoc
+//
+//	@Summary		Analizar PDF con IA
+//	@Description	Analiza un PDF, extrae fechas importantes y crea eventos automáticamente en el calendario
+//	@Tags			AI
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id	path		string	true	"ID del archivo"
+//	@Success		200	{object}	map[string]interface{}
+//	@Failure		404	{object}	map[string]string
+//	@Failure		500	{object}	map[string]string
+//	@Router			/ai/files/{id}/analyze [post]
 func AnalyzePDFHandler(c *gin.Context) {
 	fileID := c.Param("id")
 
@@ -158,4 +216,78 @@ func AnalyzePDFHandler(c *gin.Context) {
 		"eventos": result.Eventos,
 		"creados": createdCount,
 	})
+}
+
+// GenerateStudyPlanByCourseHandler godoc
+//
+//	@Summary		Generar plan de estudio por curso
+//	@Description	Genera y guarda un plan de estudio usando todos los archivos asociados a un curso
+//	@Tags			AI
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id		path		string	true	"ID del curso"
+//	@Param			days	query		int		true	"Cantidad de días"
+//	@Success		200		{object}	studyplan.StudyPlan
+//	@Failure		400		{object}	map[string]string
+//	@Failure		404		{object}	map[string]string
+//	@Failure		500		{object}	map[string]string
+//	@Router			/ai/courses/{id}/study-plan [post]
+func GenerateStudyPlanByCourseHandler(c *gin.Context) {
+	courseID := c.Param("id")
+
+	files, err := studyfile.GetStudyFilesByCourseID(courseID)
+	if err != nil || len(files) == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "no hay archivos en este curso"})
+		return
+	}
+
+	daysStr := c.Query("days")
+	days, err := strconv.Atoi(daysStr)
+	if err != nil || days <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "days debe ser un número mayor a 0"})
+		return
+	}
+
+	combinedText := ""
+	for _, f := range files {
+		combinedText += f.ParsedText + "\n\n"
+	}
+
+	content, err := GenerateStudyPlan(combinedText, days)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// ✅ Guardar en BD
+	plan, err := studyplan.SaveStudyPlan(courseID, content, days)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "error al guardar el plan"})
+		return
+	}
+
+	c.JSON(http.StatusOK, plan)
+}
+
+// GetStudyPlanHandler godoc
+//
+//	@Summary		Obtener plan de estudio
+//	@Description	Obtiene el último plan de estudio generado para un curso
+//	@Tags			AI
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id	path		string	true	"ID del curso"
+//	@Success		200	{object}	studyplan.StudyPlan
+//	@Failure		404	{object}	map[string]string
+//	@Router			/ai/courses/{id}/study-plan [get]
+func GetStudyPlanHandler(c *gin.Context) {
+	courseID := c.Param("id")
+
+	plan, err := studyplan.GetStudyPlanByCourse(courseID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "no hay plan generado para este curso"})
+		return
+	}
+
+	c.JSON(http.StatusOK, plan)
 }

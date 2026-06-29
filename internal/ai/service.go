@@ -1,6 +1,9 @@
 package ai
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 func SummarizeNote(content string) (string, error) {
 	if len(content) > 3000 {
@@ -14,7 +17,12 @@ func GenerateQuestions(content string) (string, error) {
 	if len(content) > 3000 {
 		content = content[:3000]
 	}
-	prompt := fmt.Sprintf("Genera 10 preguntas de estudio en español basadas en el siguiente texto:\n\n%s", content)
+	prompt := fmt.Sprintf(`Genera exactamente 10 preguntas de estudio en español basadas en este texto.
+Responde ÚNICAMENTE con un array JSON válido. Sin texto adicional, sin markdown, sin bloques de código.
+Usa este formato exacto:
+[{"question":"¿Pregunta?","answer":"Respuesta correcta"},{"question":"¿Pregunta?","answer":"Respuesta correcta"}]
+
+Texto: %s`, content)
 	return Generate(prompt)
 }
 
@@ -27,10 +35,22 @@ func GenerateStudyPlan(content string, days int) (string, error) {
 }
 
 func AnalyzePDF(content string) (string, error) {
-	// El cronograma generalmente está al final del PDF
-	// Mandamos las últimas 4000 caracteres donde suele estar
-	if len(content) > 4000 {
-		content = content[len(content)-4000:]
+	// Buscar la palabra "cronograma" (case insensitive)
+	lowerContent := strings.ToLower(content)
+	idx := strings.Index(lowerContent, "cronograma")
+
+	if idx != -1 {
+		// Extraer desde donde aparece "cronograma"
+		content = content[idx:]
+		// Limitar a 4000 caracteres desde ahí
+		if len(content) > 4000 {
+			content = content[:4000]
+		}
+	} else {
+		// Si no encuentra "cronograma", usar las últimas 4000 chars como antes
+		if len(content) > 4000 {
+			content = content[len(content)-4000:]
+		}
 	}
 
 	prompt := fmt.Sprintf(`Eres un asistente académico. Analiza el siguiente texto de un programa de curso universitario.
