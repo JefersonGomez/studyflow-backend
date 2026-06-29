@@ -40,6 +40,12 @@ func main() {
 		log.Fatal("Error al cargar el .env")
 	}
 
+	if os.Getenv("ENV") != "production" {
+		if err := godotenv.Load(); err != nil {
+			log.Println("No se encontró .env, usando variables del sistema")
+		}
+	}
+
 	database.Connect()
 
 	database.DB.AutoMigrate(
@@ -52,12 +58,6 @@ func main() {
 		&studyfile.Studyfile{},
 		&studyplan.StudyPlan{},
 	)
-
-	if os.Getenv("ENV") != "production" {
-		if err := godotenv.Load(); err != nil {
-			log.Println("No se encontró .env, usando variables del sistema")
-		}
-	}
 
 	r := gin.Default()
 
